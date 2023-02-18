@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import { GlobalStyle } from './GlobalStyle';
 import { ImageGallery } from './ImageGallery';
@@ -7,93 +7,86 @@ import { Searchbar } from './Searchbar';
 import { Button } from './Button';
 import { Loader } from './Loader';
 import { settings } from 'utils/notifySettings';
-import { getImages } from 'services/pixabayAPI';
+import { fetchImages } from 'services/pixabayAPI';
 import { Modal } from './Modal';
 
-export class App extends Component {
-  state = {
-    page: 1,
-    sb: null,
-    query: '',
-    images: [],
-    isLoading: false,
-    showModal: false,
-    currentIdx: null,
-  };
+export const App = () => {
+  const [page, setPage] = useState(1);
+  const [sb, setSb] = useState(null);
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [currentIdx, setCurrentIdx] = useState(null);
 
-  async componentDidUpdate(_, prevState) {
-    const { query, page, images } = this.state;
-    const { query: prevQuery, page: prevPage } = prevState;
+  useEffect(() => {
+    if (!query) {
+      return;
+    }
 
-    if (prevQuery !== query || prevPage !== page) {
+    async function getImages() {
       try {
-        this.setState({ isLoading: true });
-        const { hits, totalHits } = await getImages(query, page);
-        this.setState({
-          sb: page < Math.ceil(totalHits / 12),
-          images: [...images, ...hits],
-        });
+        setIsLoading(true);
+        const { hits, totalHits } = await fetchImages(query, page);
+        setSb(page < Math.ceil(totalHits / 12));
+        setImages(prevImages => [...prevImages, ...hits]);
       } catch (e) {
         toast.error(
           `Something is wrong, try to reload page! Error: ${e.message}`,
           settings
         );
       } finally {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
       }
     }
-  }
 
-  handleFormSubmit = query => {
-    this.setState({ page: 1, sb: null, query, images: [] });
+    getImages();
+  }, [query, page]);
+
+  const handleFormSubmit = query => {
+    setPage(1);
+    setSb(null);
+    setQuery(query);
+    setImages([]);
   };
 
-  toggleModal = id => {
-    this.setState({ showModal: !this.state.showModal, currentIdx: id });
+  const toggleModal = id => {
+    setShowModal(!showModal);
+    setCurrentIdx(id);
   };
 
-  closeModal = () => {
-    this.setState({ showModal: !this.state.showModal });
+  const closeModal = () => {
+    setShowModal(!showModal);
   };
 
-  loadMore = () => {
-    this.setState(({ page }) => ({
-      page: page + 1,
-    }));
+  const loadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  render() {
-    const { images, query, showModal, currentIdx, isLoading, sb } = this.state;
+  return (
+    <>
+      <Searchbar onSubmit={handleFormSubmit} />
 
-    return (
-      <>
-        <Searchbar onSubmit={this.handleFormSubmit} />
+      <Wrapper>
+        <ImageGallery
+          images={images}
+          query={query}
+          toggle={toggleModal}
+          showModal={showModal}
+          currentIdx={currentIdx}
+        />
 
-        <Wrapper>
-          <ImageGallery
-            images={images}
-            query={query}
-            toggle={this.toggleModal}
-            showModal={showModal}
-            currentIdx={currentIdx}
-          />
+        <Loader loading={isLoading} />
 
-          <Loader loading={isLoading} />
+        {sb && <Button loadMore={loadMore} />}
+      </Wrapper>
 
-          {sb && <Button loadMore={this.loadMore} />}
-        </Wrapper>
+      {showModal && (
+        <Modal image={images[currentIdx]} alt={query} onClose={closeModal} />
+      )}
 
-        {showModal && (
-          <Modal
-            image={images[currentIdx]}
-            alt={query}
-            onClose={this.closeModal}
-          />
-        )}
-
-        <GlobalStyle />
-        <ToastContainer />
-      </>
-    );
-  }
-}
+      <GlobalStyle />
+      <ToastContainer />
+    </>
+  );
+};
