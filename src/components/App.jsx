@@ -12,11 +12,11 @@ import { Modal } from './Modal';
 
 export const App = () => {
   const [page, setPage] = useState(1);
-  const [sb, setSb] = useState(null);
   const [query, setQuery] = useState('');
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showButton, setShowButton] = useState(null);
   const [currentIdx, setCurrentIdx] = useState(null);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export const App = () => {
       try {
         setIsLoading(true);
         const { hits, totalHits } = await fetchImages(query, page);
-        setSb(page < Math.ceil(totalHits / 12));
+        setShowButton(page < Math.ceil(totalHits / 12));
         setImages(prevImages => [...prevImages, ...hits]);
       } catch (e) {
         toast.error(
@@ -45,18 +45,18 @@ export const App = () => {
 
   const handleFormSubmit = query => {
     setPage(1);
-    setSb(null);
+    setShowButton(null);
     setQuery(query);
     setImages([]);
   };
 
   const toggleModal = id => {
-    setShowModal(!showModal);
+    setShowModal(prevState => !prevState);
     setCurrentIdx(id);
   };
 
   const closeModal = () => {
-    setShowModal(!showModal);
+    setShowModal(prevState => !prevState);
   };
 
   const loadMore = () => {
@@ -78,7 +78,7 @@ export const App = () => {
 
         <Loader loading={isLoading} />
 
-        {sb && <Button loadMore={loadMore} />}
+        {showButton && <Button loadMore={loadMore} />}
       </Wrapper>
 
       {showModal && (
